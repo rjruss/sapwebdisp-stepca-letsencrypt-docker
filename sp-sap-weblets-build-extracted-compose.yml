@@ -1,0 +1,81 @@
+services:
+  sp-sap-weblets-build:
+    container_name: sap-weblets-run
+    image: sap-weblets-img
+    build:
+      dockerfile: sp-sap-weblets-build-split-docker
+      target: sap-weblets-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}
+        - SP_APP_WEBLETS_VERSION=${SP_APP_WEBLETS_VERSION}
+        #Container Specific
+        - CSR_LOCATE=${CSR_LOCATE}
+        - SIGNED_CERT=${SIGNED_CERT}
+        - SP_SAP_DIR=/srv
+        - SP_SAP_APP_DIR=/srv/weblets
+        - SP_STEP_HOST=${SP_STEP_HOST}
+        - SP_STEPPATH=/srv/weblets/.step
+        - SP_WEBLETS_CERT_DUR=48h
+        - SP_CONTAINER_NAME=sap-weblets-run
+        - SP_WEBLETS_EXP_CHECK=85%
+        - SP_TARGET_HOST=${SP_TARGET_HOST}
+        - SP_TARGET_PORT=${SP_TARGET_PORT}
+        - SP_ZSRCSRV=${WEBLETS_HOST_PORT}
+        - ZABAP_SRCSRV=${WEBLETS_ZABAP_SRCSRV}
+        - SP_ABAP_SETUP=YES
+        - SP_ABAP_HTTPS_PORT=${SP_ABAP_HTTPS_PORT} 
+        - SP_ABAP_HOST_FQDN=${SP_ABAP_HOST_FQDN} 
+        - SP_ABAP_MSHOST_FQDN=${SP_ABAP_MSHOST_FQDN} 
+        - SP_ABAP_HTTP_PORT=${SP_ABAP_HTTP_PORT} 
+        - SP_ABAP_MS_PORT=${SP_ABAP_MS_PORT} 
+        - SP_ABAP_SID=${SP_ABAP_SID} 
+        - ZWEBADM_HOST=${WEBLETS_HOST}.${DOMAIN}
+        - ZWEBADM_PORT=${WEBLETS_ZWEBADM_PORT}
+        - SP_RCOUNT=${SP_RCOUNT} 
+        - SP_RDAY=${SP_RDAY} 
+        - SP_RENEW_VALID=${SP_RENEW_VALID} 
+        - SP_ROOTC=${SP_ROOTC} 
+        - SP_ROOTCA_VALID=${SP_ROOTCA_VALID} 
+        - SP_EMAIL=${SP_EMAIL}
+        - SP_ROOTCN=${SP_ROOTCN} 
+        - SP_RTIME=${SP_RTIME} 
+        - SP_RSLEEP=${SP_RSLEEP}
+    hostname: ${WEBLETS_HOST}
+    domainname: ${DOMAIN}
+    ports:
+      - "${WEBLETS_HOST_PORT}:${WEBLETS_HOST_PORT}"
+      - "${WEBLETS_ZWEBADM_PORT}:${WEBLETS_ZWEBADM_PORT}"
+      - "${WEBLETS_ZABAP_SRCSRV}:${WEBLETS_ZABAP_SRCSRV}"
+    networks:
+      - sp-sap-net1
+    depends_on:
+      sp-sap-step-build:
+        condition: service_started
+    volumes:
+      - sp_sap_keys_vol1:/srv/shared/.age/.keys:ro
+      - sp_sap_info_vol1:/srv/shared/.age/.info:ro
+      - sp_sap_weblets_vol1:/srv
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+#      - shared:/mnt/shared
+    tty: true
+volumes:
+  sp_sap_keys_vol1:
+    external: true
+  sp_sap_info_vol1:
+    external: true
+  sp_sap_weblets_vol1:
+    external: true
+  shared:
+networks:
+  sp-sap-net1:
+    external: true

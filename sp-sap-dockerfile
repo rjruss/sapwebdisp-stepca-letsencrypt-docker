@@ -1,0 +1,91 @@
+ARG USER_UID
+ARG USER_GID
+ARG SP_SHARED_ENV_GROUP
+ARG SP_SHARED_GROUP_NAME
+ARG SP_SHARED_DIR
+ARG SP_AGEDIR
+ARG SP_AGEDIR_KEYS
+ARG SP_AGEDIR_INFO
+ARG SP_APP_STEP_VERSION
+ARG CSR_LOCATE
+ARG SIGNED_CERT
+ARG SP_ABAP_HTTPS_PORT
+ARG SP_ABAP_HOST_FQDN
+ARG SP_ABAP_MSHOST_FQDN
+ARG SP_ABAP_HTTP_PORT
+ARG SP_ABAP_MS_PORT
+ARG SP_ABAP_SETUP
+ARG SP_ABAP_SID
+
+FROM rockylinux:9.3 AS sap-img
+ARG USER_UID
+ARG USER_GID
+ARG SP_SAP_APP_DIR
+ARG SP_SHARED_GROUP_NAME
+ARG SP_SHARED_ENV_GROUP
+ARG SP_SHARED_DIR
+ARG SP_AGEDIR
+ARG SP_AGEDIR_KEYS
+ARG SP_AGEDIR_INFO
+
+
+ENV SP_SAP_APP_DIR=${SP_SAP_APP_DIR} \
+    SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME} \
+    SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP} \
+    SP_SHARED_DIR=${SP_SHARED_DIR} \
+    SP_AGEDIR=${SP_AGEDIR} \
+    SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS} \
+    SP_AGEDIR_INFO=${SP_AGEDIR_INFO} \
+    SP_BOLD='\033[1m' \
+    SP_RESET='\033[0m'
+RUN dnf -y update && dnf install -y libxcrypt-compat procps wget unzip python3 augeas-libs jq openssl tmux nc pinentry iproute glibc-locale-source glibc-langpack-en socat
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
+RUN mkdir -p $SP_AGEDIR $SP_AGEDIR_KEYS $SP_AGEDIR_INFO $SP_SHARED_DIR 
+ADD ./sp-sap-image/config/shared/* $SP_SHARED_DIR/.
+RUN groupadd -g $SP_SHARED_ENV_GROUP $SP_SHARED_GROUP_NAME
+RUN cd $SP_AGEDIR && curl -s -L -o age.tgz https://dl.filippo.io/age/latest?for=linux/amd64 \
+        && tar -xzf  age.tgz --strip-components=1 \
+        && rm -f age.tgz
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+ENV PATH="${PATH}:$SP_SHARED_DIR:$SP_AGEDIR"
+RUN chmod +rx $SP_SHARED_DIR/*sh
+
+FROM sap-img AS sap-webshared-img
+ARG CSR_LOCATE
+ARG SIGNED_CERT
+ARG SP_ABAP_HTTPS_PORT
+ARG SP_ABAP_HOST_FQDN
+ARG SP_ABAP_MSHOST_FQDN
+ARG SP_ABAP_HTTP_PORT
+ARG SP_ABAP_MS_PORT
+ARG SP_ABAP_SETUP
+ARG SP_ABAP_SID
+RUN mkdir -p /srv/.self/certs /home/dwdadm/startup /srv/usr/sap/webdisp/rootcerts /srv/usr/sap/webdisp/sec /srv/usr/sap/webdisp/csr /srv/usr/sap/webdisp/manage/abap /srv/usr/sap/webdisp/security/data/ 
+ADD ./sp-sap-image/bin/SAPCAR /srv/usr/sap/webdisp/SAPCAR
+ADD ./sp-sap-image/bin/SAPWEBDISP_SP_235-80007304.SAR /srv/usr/sap/webdisp/SAPWEBDISP_SP_235-80007304.SAR
+ADD ./sp-sap-image/rootcerts /srv/usr/sap/webdisp/rootcerts/.
+ADD ./sp-sap-image/config/icm_filter_rules.txt /srv/usr/sap/webdisp/security/data/icm_filter_rules.txt
+ADD ./sp-sap-image/config/sapwebdisp.pfl /srv/usr/sap/webdisp/sapwebdisp.pfl
+ADD ./sp-sap-image/config/web-abap.sh /srv/usr/sap/webdisp/manage/web-abap.sh
+ADD ./sp-sap-image/config/setwebadm.sh /srv/usr/sap/webdisp/manage/setwebadm.sh
+ADD ./sp-sap-image/config/self-signed-check.sh /srv/usr/sap/webdisp/manage/abap/self-signed-check.sh
+ADD ./sp-sap-image/config/import-ext-cert.sh /srv/usr/sap/webdisp/manage/import-ext-cert.sh
+ADD ./sp-sap-image/config/sleep-control.sh /srv/usr/sap/webdisp/manage/sleep-control.sh
+ADD ./sp-sap-image/config/check_cert.sh /srv/usr/sap/webdisp/manage/check_cert.sh
+RUN chmod +x /srv/usr/sap/webdisp/SAPCAR
+ENV PATH="${PATH}:/srv/usr/sap/webdisp:/srv/usr/sap/webdisp/manage"
+ENV USER=dwdadm
+ENV SECUDIR=/srv/usr/sap/webdisp/sec
+ENV LD_LIBRARY_PATH=/srv/usr/sap/webdisp
+ENV CSR_LOCATE=${CSR_LOCATE}
+ENV SIGNED_CERT=${SIGNED_CERT}
+RUN groupadd -g ${USER_GID} -r sapsys \
+	&& useradd  dwdadm -g sapsys -G $SP_SHARED_GROUP_NAME -u ${USER_UID} -d /srv/usr/sap/webdisp 
+RUN  SAPCAR -xf /srv/usr/sap/webdisp/SAPWEBDISP_SP_235-80007304.SAR -R /srv/usr/sap/webdisp \
+	&& rm -rfv /srv/usr/sap/webdisp/SAPWEBDISP_SP_235-80007304.SAR \
+        && chmod +x /srv/usr/sap/webdisp/manage/*sh /srv/usr/sap/webdisp/manage/abap/*sh \
+	&& chown -R dwdadm:sapsys /srv/usr/sap
+

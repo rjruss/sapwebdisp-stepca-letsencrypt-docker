@@ -1,0 +1,64 @@
+services:
+  sp-sap-[&replace_lower_app_name&]-build:
+    container_name: sap-[&replace_lower_app_name&]-run
+    image: sap-[&replace_lower_app_name&]-img
+    build:
+      dockerfile: sp-sap-[&replace_lower_app_name&]-build-split-docker
+      target: sap-[&replace_lower_app_name&]-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}
+        - SP_APP_[&REPLACE_UPPER_APP_NAME&]_VERSION=${SP_APP_[&REPLACE_UPPER_APP_NAME&]_VERSION}
+        #Container Specific
+        - SP_SAP_DIR=/srv
+        - SP_SAP_APP_DIR=/srv/[&replace_lower_app_name&]
+        - SP_STEP_HOST=${SP_STEP_HOST}
+        - SP_STEPPATH=/srv/[&replace_lower_app_name&]/.step
+        - SP_DB_HOST=sap-postdb-run
+        - SP_DB_PORT=5432
+        - SP_POSTGRES_USER=${SP_POSTGRES_USER}
+        - SP_POSTGRES_DB=${SP_POSTGRES_DB}
+        - SP_DB_SHARED_LOCATION=/mnt/shared
+        #       - SP_[&REPLACE_UPPER_APP_NAME&]_ADMIN_USER=${SP_[&REPLACE_UPPER_APP_NAME&]_ADMIN_USER}
+        #       - SP_[&REPLACE_UPPER_APP_NAME&]_USER_SP_EMAIL=${SP_[&REPLACE_UPPER_APP_NAME&]_USER_SP_EMAIL}
+        - SP_[&REPLACE_UPPER_APP_NAME&]_CERT_DUR=48h
+        - SP_CONTAINER_NAME=sap-[&replace_lower_app_name&]-run
+        - SP_[&REPLACE_UPPER_APP_NAME&]_EXP_CHECK=85%
+    hostname: ${[&REPLACE_UPPER_APP_NAME&]_HOST}
+    domainname: ${DOMAIN}
+#   ports:
+#     - "8010:8010"
+    networks:
+      - sp-sap-net1
+#   depends_on:
+#     sp-sap-step-build:
+#       condition: service_started
+#     sp-sap-postdb-build:
+#       condition: service_healthy
+    volumes:
+      - sp_sap_keys_vol1:/srv/shared/.age/.keys:ro
+      - sp_sap_info_vol1:/srv/shared/.age/.info:ro
+      - sp_sap_[&replace_lower_app_name&]_vol1:/srv
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - shared:/mnt/shared
+    tty: true
+volumes:
+  sp_sap_keys_vol1:
+    external: true
+  sp_sap_info_vol1:
+    external: true
+  sp_sap_[&replace_lower_app_name&]_vol1:
+    external: true
+  shared:
+networks:
+  sp-sap-net1:
+    external: true

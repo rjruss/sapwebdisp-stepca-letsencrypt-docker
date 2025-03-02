@@ -1,0 +1,35 @@
+services:
+  sp-sap-shared-build:
+    container_name: sap-shared-run
+    image: sap-img
+    build:
+      dockerfile: sp-sap-dockerfile
+      target: sap-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}
+  sp-sap-build:
+    container_name: sap-run
+    image: sap-webshared-img
+    build:
+      dockerfile: sp-sap-dockerfile
+      target: sap-webshared-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}

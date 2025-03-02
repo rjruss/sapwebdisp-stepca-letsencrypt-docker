@@ -1,0 +1,28 @@
+###
+
+###
+
+if %{HTTP_HOST} regimatch "ZHOST_FQDN" [and]
+if %{SERVER_PORT} = SP_ZSRCSRV
+begin
+        SetHeader host ZSP_TARGET_HOST
+        SetHeader x-sap-webdisp-target-sid EX1 [break]
+end
+
+if %{HTTP_HOST} regimatch "ZHOST_FQDN" [and]
+if %{SERVER_PORT} = ZABAP_SRCSRV
+begin
+        SetHeader x-sap-webdisp-target-sid SP_ABAP_SID [break]
+end
+
+if %{HTTP_HOST} regimatch "ZHOST_FQDN" [and]
+if %{SERVER_PORT} = ZWEBADM_PORT [and]
+if %{PATH} RegIMatch "^/sap/wdisp/admin/*"
+begin
+        SetHeader x-sap-webdisp-target-sid SP_ABAP_SID [break]
+end
+
+if %{HTTP_HOST} !stricmp "ZHOST_FQDN"
+begin
+	RegForbiddenUrl ^/(.*) -
+end

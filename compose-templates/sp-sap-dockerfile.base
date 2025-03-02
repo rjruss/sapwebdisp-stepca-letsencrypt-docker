@@ -1,0 +1,49 @@
+ARG USER_UID
+ARG USER_GID
+ARG SP_SHARED_ENV_GROUP
+ARG SP_SHARED_GROUP_NAME
+ARG SP_SHARED_DIR
+ARG SP_AGEDIR
+ARG SP_AGEDIR_KEYS
+ARG SP_AGEDIR_INFO
+ARG SP_APP_STEP_VERSION
+
+FROM rockylinux:9.3 AS sap-img:latest
+ARG USER_UID
+ARG USER_GID
+ARG SP_SAP_APP_DIR
+ARG SP_SHARED_GROUP_NAME
+ARG SP_SHARED_ENV_GROUP
+ARG SP_SHARED_DIR
+ARG SP_AGEDIR
+ARG SP_AGEDIR_KEYS
+ARG SP_AGEDIR_INFO
+
+#ENV USER_UID=${USER_UID} \
+#    USER_GID=${USER_GID} \
+ENV SP_SAP_APP_DIR=${SP_SAP_APP_DIR} \
+    SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME} \
+    SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP} \
+    SP_SHARED_DIR=${SP_SHARED_DIR} \
+    SP_AGEDIR=${SP_AGEDIR} \
+    SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS} \
+    SP_AGEDIR_INFO=${SP_AGEDIR_INFO} \
+    SP_BOLD='\033[1m' \
+    SP_RESET='\033[0m'
+RUN dnf -y update && yum install -y libxcrypt-compat procps wget unzip python3 augeas-libs jq openssl tmux nc pinentry iproute git glibc-locale-source glibc-langpack-en
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+RUN echo "LANG=en_US.UTF-8" > /etc/locale.conf
+ADD ./sp-sap-image/config/shared/* $SP_SHARED_DIR/.
+RUN groupadd -g $SP_SHARED_ENV_GROUP $SP_SHARED_GROUP_NAME
+ENV PATH="${PATH}:$SP_SHARED_DIR:$SP_AGEDIR"
+#ENV LANG C.UTF-8
+#ENV LC_ALL C.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
+RUN mkdir -p $SP_AGEDIR $SP_AGEDIR_KEYS $SP_AGEDIR_INFO
+RUN chmod +rx $SP_SHARED_DIR/*sh
+RUN cd $SP_AGEDIR && curl -s -L -o age.tgz https://dl.filippo.io/age/latest?for=linux/amd64 \
+        && tar -xzf  age.tgz --strip-components=1 \
+        && rm -f age.tgz
+

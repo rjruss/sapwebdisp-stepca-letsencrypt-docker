@@ -1,0 +1,85 @@
+services:
+  sp-sap-webstepacme-build:
+    container_name: sap-webstepacme-run
+    image: sap-webstepacme-img
+    build:
+      dockerfile: sp-sap-webstepacme-build-split-docker
+      target: sap-webstepacme-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}
+        - SP_APP_WEBSTEPACME_VERSION=${SP_APP_WEBSTEPACME_VERSION}
+        #Container Specific
+        - CSR_LOCATE=${CSR_LOCATE}
+        - SIGNED_CERT=${SIGNED_CERT}
+        - SP_SAP_DIR=/srv
+        - SP_SAP_APP_DIR=/srv/webstep
+        - SP_STEP_HOST=${SP_STEP_HOST}
+        - SP_PROV_NAME=baseprov
+        - SP_STEPPATH=/srv/webstep/.step
+        - SP_WEBSTEPACME_CERT_DUR=${SP_WEBSTEPACME_CERT_DUR}
+        - SP_CONTAINER_NAME=sap-webstep-run
+        - SP_WEBSTEPACME_EXP_CHECK=85%
+        - SP_TARGET_HOST=${SP_TARGET_HOST}
+        - SP_TARGET_PORT=${SP_TARGET_PORT}
+        - SP_ZSRCSRV=${WEBSTEPACME_HOST_PORT}
+        - ZABAP_SRCSRV=${WEBSTEPACME_ZABAP_SRCSRV}
+        - SP_ABAP_SETUP=YES
+        - SP_ABAP_HTTPS_PORT=${SP_ABAP_HTTPS_PORT} 
+        - SP_ABAP_HOST_FQDN=${SP_ABAP_HOST_FQDN} 
+        - SP_ABAP_MSHOST_FQDN=${SP_ABAP_MSHOST_FQDN} 
+        - SP_ABAP_HTTP_PORT=${SP_ABAP_HTTP_PORT} 
+        - SP_ABAP_MS_PORT=${SP_ABAP_MS_PORT} 
+        - SP_ABAP_SID=${SP_ABAP_SID} 
+        - ZWEBADM_HOST=${WEBSTEPACME_HOST}.${DOMAIN}
+        - ZWEBADM_PORT=${WEBSTEPACME_ZWEBADM_PORT}
+        - SP_RCOUNT=${SP_RCOUNT} 
+        - SP_RDAY=${SP_RDAY} 
+        - SP_RENEW_VALID=${SP_RENEW_VALID} 
+        - SP_ROOTC=${SP_ROOTC} 
+        - SP_ROOTCA_VALID=${SP_ROOTCA_VALID} 
+        - SP_EMAIL=${SP_EMAIL}
+        - SP_ROOTCN=${SP_ROOTCN} 
+        - SP_RTIME=${SP_RTIME} 
+        - SP_RSLEEP=${SP_RSLEEP}
+    hostname: ${WEBSTEPACME_HOST}
+    domainname: ${DOMAIN}
+    ports:
+      - "${WEBSTEPACME_HOST_PORT}:${WEBSTEPACME_HOST_PORT}"
+      - "${WEBSTEPACME_ZWEBADM_PORT}:${WEBSTEPACME_ZWEBADM_PORT}"
+      - "${WEBSTEPACME_ZABAP_SRCSRV}:${WEBSTEPACME_ZABAP_SRCSRV}"
+      - "443:443"
+    cap_add:
+      - NET_BIND_SERVICE
+    networks:
+      - sp-sap-net1
+    depends_on:
+      sp-sap-step-build:
+        condition: service_started
+    volumes:
+      - sp_sap_keys_vol1:/srv/shared/.age/.keys:ro
+      - sp_sap_info_vol1:/srv/shared/.age/.info:ro
+      - sp_sap_webstepacme_vol1:/srv
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+#      - shared:/mnt/shared
+    tty: true
+volumes:
+  sp_sap_keys_vol1:
+    external: true
+  sp_sap_info_vol1:
+    external: true
+  sp_sap_webstepacme_vol1:
+    external: true
+  shared:
+networks:
+  sp-sap-net1:
+    external: true

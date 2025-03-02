@@ -1,0 +1,52 @@
+services:
+  sp-sap-step-build:
+    container_name: sap-step-run
+    image: sap-step-img
+    build:
+      dockerfile: sp-sap-step-build-split-docker02
+      target: sap-step-img
+      args:
+        #BASE BUILD
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - SP_SHARED_ENV_GROUP=${SP_SHARED_ENV_GROUP}
+        - SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME}
+        - SP_SHARED_DIR=${SP_SHARED_DIR}
+        - SP_AGEDIR=${SP_AGEDIR}
+        - SP_AGEDIR_KEYS=${SP_AGEDIR_KEYS}
+        - SP_AGEDIR_INFO=${SP_AGEDIR_INFO}
+        - SP_APP_STEP_VERSION=${SP_APP_STEP_VERSION}
+        - SP_APP_STEP_PORT=${SP_APP_STEP_PORT}
+        #Container Specific
+        - SP_SAP_DIR=/srv
+        - SP_SAP_APP_DIR=/srv
+        - SP_CONTAINER_NAME=sap-step-run
+        - SP_AUTH_NAME=basestepCA
+        - SP_PROV_NAME=baseprov
+        - SP_CONT_NAME=baseca
+        - SP_STEP_NAME=basestep
+        - SP_REMOT_MAN=true
+        - SP_ADDRESS=:${SP_APP_STEP_PORT}
+        # Max cert duration 2190h = 90 days, 8760h = 1 year
+        - SP_CERT_MAX_DUR=2190h
+    hostname: ${STEP_HOST}
+    domainname: ${DOMAIN}
+    ports:
+      - "${SP_APP_STEP_PORT}:${SP_APP_STEP_PORT}"
+    networks:
+      - sp-sap-net1
+    volumes:
+      - sp_sap_step_vol1:/home/step
+      - sp_sap_keys_vol1:/srv/shared/.age/.keys:ro
+      - sp_sap_info_vol1:/srv/shared/.age/.info:ro
+    tty: true
+volumes:
+  sp_sap_step_vol1:
+    external: true
+  sp_sap_keys_vol1:
+    external: true
+  sp_sap_info_vol1:
+    external: true
+networks:
+  sp-sap-net1:
+    external: true

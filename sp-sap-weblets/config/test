@@ -1,0 +1,109 @@
+#!/bin/bash
+set -x
+#. /etc/profile.d/webdispprof.sh
+
+HOST_FQDN=`hostname -f`
+DT=`date +"%d%m%Y"`
+let DAYS=${SP_RCOUNT}
+let SDIFF=(24*60*60)*${DAYS}
+
+start_webdisp () {
+        echo "INFO: Starting Web Dispatcher"
+        /srv/usr/sap/webdisp/sapwebdisp pf=/srv/usr/sap/webdisp/sapwebdisp.pfl &
+}
+
+and_wait () {
+        TT=`date -d "${SP_RTIME} Tomorrow" +%s`
+        CT=`date +%s`
+        let SLEEPDIFF=TT-CT
+        if [ ${SDIFF} -lt 1 ]
+        then
+                echo "<<ERROR>>sleep calculation error so just sleep 12 hours - check status manually"
+                sleep 12h
+        else
+                echo "sleeping till `date -d "${SP_RTIME} Tomorrow"` "
+                sleep ${SLEEPDIFF}
+        fi
+}
+
+renew_cert () {
+	if [ "$1" == "${SP_RDAY}" ]
+	then
+		echo ">>RENEW cert check<<"
+		/srv/usr/sap/webdisp/cloudflare/public-renew.sh
+		return_code=$?
+		if [ $return_code -eq 0 ]; then
+		    echo "The script executed successfully."
+		    return 0
+		else
+		    echo "The script encountered an error. Return code: $return_code"
+		    return $return_code
+		fi
+	fi
+}
+
+
+if [ ! -f ${SECUDIR}/DOCKERSSL.pse ]
+then
+	sed -i "s/ZHOST_FQDN/${HOST_FQDN}/;s/ZWEBADM_PORT/${ZWEBADM_PORT}/" /srv/usr/sap/webdisp/security/data/icm_filter_rules.txt
+	sed -i "s/ZSP_TARGET_HOST/${SP_TARGET_HOST}/;s/SP_ZSRCSRV/${SP_ZSRCSRV}/" /srv/usr/sap/webdisp/security/data/icm_filter_rules.txt
+        sed -i "s/ZSP_TARGET_HOST:ZSP_TARGET_PORT/${SP_TARGET_HOST}:${SP_TARGET_PORT}/" /srv/usr/sap/webdisp/sapwebdisp.pfl
+	sed -i "s/SP_ZSRCSRV/${SP_ZSRCSRV}/;s/ZWEBADM_PORT/${ZWEBADM_PORT}/" /srv/usr/sap/webdisp/sapwebdisp.pfl
+	/srv/usr/sap/webdisp/sapgenpse gen_pse -p ${SECUDIR}/DOCKERSSL.pse -x '' -r ${CSR_LOCATE} -k GN-dNSName:${HOST_FQDN} 'CN='"${HOST_FQDN}"', DNS='"${HOST_FQDN}"', C=GB'
+	sleep 5
+	ls -l ${SECUDIR}/DOCKERSSL.pse
+	/srv/usr/sap/webdisp/sapwebdisp pf=/srv/usr/sap/webdisp/sapwebdisp.pfl &
+	echo "sleep 10"
+	sleep 10
+	echo "kill webdisp"
+        # Import trusted root certs
+        #rootdir="/srv/usr/sap/webdisp/rootcerts"
+        #for rfile in "$rootdir"/*; do
+        #if [ -f "$rfile" ]; then
+        #        trust anchor ${rfile}
+        #fi
+        #done
+
+	pkill -P $$
+	/srv/usr/sap/webdisp/cloudflare/get_lets_cert.sh
+	/srv/usr/sap/webdisp/cloudflare/get_target_cert.sh
+        if [ "$SP_ABAP_SETUP" == "YES" ]
+        then
+                /srv/usr/sap/webdisp/cloudflare/web-abap.sh
+        fi
+	sleep 2
+	#/srv/usr/sap/webdisp/sapwebdisp pf=/srv/usr/sap/webdisp/sapwebdisp.pfl
+        start_webdisp
+	sleep 2
+	/srv/usr/sap/webdisp/cloudflare/setwebadm.sh
+        and_wait
+
+else
+	echo ">>Before starting, check the webdisp cert to ensure it does not expire before set ${SP_RCOUNT} days"
+        sapgenpse export_own_cert -p /srv/usr/sap/webdisp/sec/DOCKERSSL.pse -o /var/tmp/owncert.pem -v
+        if openssl x509 -checkend $SDIFF -noout -in /var/tmp/owncert.pem
+        then
+          echo "CHECK ON:${DT}:Certificate is good"
+        else
+          echo "CHECK ON:${DT}:Certificate has expired or will do so before ${DAYS} days. (or is invalid/not found)"
+          /srv/usr/sap/webdisp/cloudflare/public-renew.sh
+        fi
+        rm -rf /var/tmp/owncert.pem
+
+	echo ">>sleep every day until the chosen day to check the cert"
+        while true
+        do
+                renew_cert $(date +%A)
+                return_code=$?
+                if [ $return_code -eq 0 ]; then
+                    echo "The script executed successfully."
+                        start_webdisp
+                        and_wait
+                else
+                    echo "The renew process encountered an error. Return code: $return_code"
+                    #exit $return_code
+                fi
+        done
+fi
+echo "just looping"
+tail -f /dev/null

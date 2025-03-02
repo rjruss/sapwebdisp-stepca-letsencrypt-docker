@@ -1,0 +1,59 @@
+FROM sap-img:latest AS sap-[&replace-app-name&]-img
+ARG USER_UID
+ARG USER_GID
+ARG SP_APP_STEP_VERSION
+ARG SP_APP_[&REPLACE-APP-NAME&]_VERSION
+#
+ARG SP_SAP_DIR
+ARG SP_SAP_APP_DIR
+ARG SP_CONTAINER_NAME
+ARG SP_STEP_HOST
+ARG SP_STEPPATH
+ARG SP_DB_HOST
+ARG SP_DB_PORT
+ARG SP_DB_SHARED_LOCATION
+ARG SP_POSTGRES_USER
+ARG SP_POSTGRES_DB
+ARG SP_SHARED_GROUP_NAME
+#[&replace-app-name&] cert 8h for 8 hours
+ARG SP_[&REPLACE-APP-NAME&]_CERT_DUR
+#a certificate "needs renewal" when it has passed 2% of its allotted lifetime.
+ARG SP_[&REPLACE-APP-NAME&]_EXP_CHECK
+ENV SP_SAP_DIR=${SP_SAP_DIR} \
+    SP_SAP_APP_DIR=${SP_SAP_APP_DIR} \
+    SP_CONTAINER_NAME=${SP_CONTAINER_NAME} \
+    SP_STEP_HOST=${SP_STEP_HOST} \
+    SP_STEPPATH=${SP_STEPPATH} \
+    STEPPATH=${SP_STEPPATH} \
+    SP_DB_HOST=${SP_DB_HOST} \
+    SP_DB_PORT=${SP_DB_PORT} \
+    SP_DB_SHARED_LOCATION=${SP_DB_SHARED_LOCATION} \
+    SP_POSTGRES_USER=${SP_POSTGRES_USER} \
+    SP_POSTGRES_DB=${SP_POSTGRES_DB} \
+    SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME} \
+    SP_[&REPLACE-APP-NAME&]_CERT_DUR=${SP_[&REPLACE-APP-NAME&]_CERT_DUR} \
+    SP_[&REPLACE-APP-NAME&]_EXP_CHECK=${SP_[&REPLACE-APP-NAME&]_EXP_CHECK} 
+RUN wget https://dl.smallstep.com/gh-release/cli/gh-release-header/v${SP_APP_STEP_VERSION}/step-cli_${SP_APP_STEP_VERSION}_amd64.rpm \
+        && rpm -i step-cli_${SP_APP_STEP_VERSION}_amd64.rpm \
+        && rm -rf step-cli_${SP_APP_STEP_VERSION}_amd64.rpm
+RUN groupadd -g ${USER_GID} -r [&replace-user-name&] \
+        && useradd -r [&replace-user-name&] -g [&replace-user-name&] -u ${USER_UID} -d /home/[&replace-user-name&]
+RUN usermod -aG $SP_SHARED_GROUP_NAME [&replace-user-name&]
+RUN mkdir -p /home/[&replace-user-name&]/cert /home/[&replace-user-name&]/.ssh /home/[&replace-user-name&]/.tok /home/[&replace-user-name&]/.postgresql /home/[&replace-user-name&]/startup ${SP_SAP_APP_DIR}/data ${SP_SAP_APP_DIR}/custom ${SP_SAP_APP_DIR}/log 
+RUN mkdir -p ${SP_DB_SHARED_LOCATION}
+ADD sp-sap-[&replace-app-name&]/config/start-[&replace-app-name&].sh /home/[&replace-user-name&]/startup/start-[&replace-app-name&].sh
+#ADD sp-sap-[&replace-app-name&]/config/renew-certs.sh /home/[&replace-user-name&]/startup/renew-certs.sh
+#ADD sp-sap-[&replace-app-name&]/config/app.ini ${SP_SAP_APP_DIR}/custom/app.ini
+WORKDIR ${SP_SAP_APP_DIR}
+#RUN wget HTTP_LOCATION:/[&replace-app-name&]/releases/download/v${SP_APP_[&REPLACE-APP-NAME&]_VERSION}/[&replace-app-name&]-${SP_APP_[&REPLACE-APP-NAME&]_VERSION}-linux-amd64
+RUN chmod 700 /home/[&replace-user-name&]/.ssh && touch /home/[&replace-user-name&]/.ssh/authorized_keys && chmod 600 /home/[&replace-user-name&]/.ssh/authorized_keys
+#RUN mv [&replace-app-name&]-${SP_APP_[&REPLACE-APP-NAME&]_VERSION}-linux-amd64 [&replace-app-name&]
+RUN chown -R [&replace-user-name&]:[&replace-user-name&] /home/[&replace-user-name&] \
+        && chown -R [&replace-user-name&]:[&replace-user-name&] ${SP_DB_SHARED_LOCATION} \
+        && chown -R [&replace-user-name&]:[&replace-user-name&] ${SP_SAP_DIR} \
+        && chmod 744 ${SP_SAP_APP_DIR} \
+        && chmod 750 /home/[&replace-user-name&]/startup/*.sh
+ENV PATH="${PATH}:${SP_SAP_APP_DIR}"
+USER [&replace-user-name&]
+WORKDIR /home/[&replace-user-name&]
+CMD [ "/usr/bin/bash", "-c", "/home/[&replace-user-name&]/startup/start-[&replace-app-name&].sh"]

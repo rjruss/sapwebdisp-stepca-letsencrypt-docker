@@ -1,0 +1,6 @@
+include:
+  - sp-sap-step-build-extracted-compose.yml
+  - sp-sap-weblets-build-extracted-compose.yml
+  - sp-sap-webpriv-build-extracted-compose.yml
+  - sp-sap-webstepacme-build-extracted-compose.yml
+  - sp-sap-webstep-build-extracted-compose.yml

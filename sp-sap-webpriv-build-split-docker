@@ -1,0 +1,91 @@
+FROM sap-webshared-img:latest AS sap-webpriv-img
+ARG USER_UID
+ARG USER_GID
+ARG SP_APP_STEP_VERSION
+ARG SP_APP_WEBPRIV_VERSION
+#
+ARG SP_SAP_DIR
+ARG SP_SAP_APP_DIR
+ARG SP_CONTAINER_NAME
+ARG SP_STEP_HOST
+ARG SP_STEPPATH
+ARG SP_SHARED_GROUP_NAME
+
+ARG SP_WEBPRIV_CERT_DUR
+ARG CSR_LOCATE
+ARG SIGNED_CERT
+
+ARG SP_WEBPRIV_EXP_CHECK
+ARG SP_TARGET_HOST
+ARG SP_TARGET_PORT
+ARG ZWEBADM_HOST
+ARG ZWEBADM_PORT
+ARG SP_ZSRCSRV
+ARG ZABAP_SRCSRV
+ARG SP_ABAP_SETUP
+
+ARG SP_ABAP_HTTPS_PORT
+ARG SP_ABAP_HOST_FQDN
+ARG SP_ABAP_MSHOST_FQDN
+ARG SP_ABAP_HTTP_PORT
+ARG SP_ABAP_MS_PORT
+ARG SP_ABAP_SID
+
+ARG SP_RCOUNT
+ARG SP_RDAY
+ARG SP_RENEW_VALID
+ARG SP_ROOTC
+ARG SP_ROOTCA_VALID
+ARG SP_EMAIL
+ARG SP_ROOTCN
+ARG SP_RTIME
+ARG SP_RSLEEP
+
+ENV SP_SAP_DIR=${SP_SAP_DIR} \
+    SP_SAP_APP_DIR=${SP_SAP_APP_DIR} \
+    SP_CONTAINER_NAME=${SP_CONTAINER_NAME} \
+    SP_STEP_HOST=${SP_STEP_HOST} \
+    SP_STEPPATH=${SP_STEPPATH} \
+    STEPPATH=${SP_STEPPATH} \
+    CSR_LOCATE=${CSR_LOCATE} \
+    SIGNED_CERT=${SIGNED_CERT} \
+    SP_SHARED_GROUP_NAME=${SP_SHARED_GROUP_NAME} \
+    SP_WEBPRIV_CERT_DUR=${SP_WEBPRIV_CERT_DUR} \
+    SP_TARGET_HOST=${SP_TARGET_HOST} \
+    SP_TARGET_PORT=${SP_TARGET_PORT} \
+    ZWEBADM_HOST=${ZWEBADM_HOST} \
+    ZWEBADM_PORT=${ZWEBADM_PORT} \
+    SP_ZSRCSRV=${SP_ZSRCSRV} \
+    ZABAP_SRCSRV=${ZABAP_SRCSRV} \
+    SP_ABAP_SETUP=${SP_ABAP_SETUP} \
+    SP_ABAP_HTTPS_PORT=${SP_ABAP_HTTPS_PORT} \
+    SP_ABAP_HOST_FQDN=${SP_ABAP_HOST_FQDN} \
+    SP_ABAP_MSHOST_FQDN=${SP_ABAP_MSHOST_FQDN} \
+    SP_ABAP_HTTP_PORT=${SP_ABAP_HTTP_PORT} \
+    SP_ABAP_MS_PORT=${SP_ABAP_MS_PORT} \
+    SP_ABAP_SID=${SP_ABAP_SID} \
+    SP_WEBPRIV_EXP_CHECK=${SP_WEBPRIV_EXP_CHECK} \
+    SP_RCOUNT=${SP_RCOUNT} \
+    SP_RDAY=${SP_RDAY} \
+    SP_RENEW_VALID=${SP_RENEW_VALID} \
+    SP_ROOTC=${SP_ROOTC} \
+    SP_ROOTCA_VALID=${SP_ROOTCA_VALID} \
+    SP_EMAIL=${SP_EMAIL} \
+    SP_ROOTCN=${SP_ROOTCN} \
+    SP_RTIME=${SP_RTIME} \
+    SP_RSLEEP=${SP_RSLEEP}
+
+RUN mkdir -p /srv/usr/sap/webdisp/ /srv/.self/cert
+ADD sp-sap-webpriv/config/start-webpriv.sh /home/dwdadm/startup/start-webpriv.sh
+ADD sp-sap-webpriv/config/self-sign.sh /srv/.self/self-sign.sh
+ADD sp-sap-webpriv/config/self-renew.sh /srv/.self/self-renew.sh
+WORKDIR ${SP_SAP_APP_DIR}
+RUN chown -R dwdadm:sapsys /home/dwdadm \
+        && chown -R dwdadm:sapsys ${SP_SAP_DIR} /srv/usr/sap/webdisp \
+        && chmod 744 ${SP_SAP_APP_DIR} \
+        && chmod 750 /srv/.self/*sh \
+        && chmod 750 /home/dwdadm/startup/*.sh
+ENV PATH="${PATH}:${SP_SAP_APP_DIR}:/srv/usr/sap/webdisp:/srv/.self"
+USER dwdadm
+WORKDIR /srv/usr/sap/webdisp
+CMD [ "/usr/bin/bash", "-c", "/home/dwdadm/startup/start-webpriv.sh"]
